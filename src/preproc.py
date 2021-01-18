@@ -1,16 +1,15 @@
 import numba as nb
 import cv2 as cv
 import numpy as np
-import matplotlib.pyplot as plt
 from scipy.stats import gaussian_kde
 from skimage.measure import regionprops
 import os
+# import matplotlib.pyplot as plt
 
 
 def preproccess(img):
 
     rr, _ = illumination_compensation(img)
-    # rr_deslant = remove_cursive_style(rr)
     c_page = cut_page(rr)
 
     return c_page
@@ -59,7 +58,6 @@ def illumination_compensation(img, only_cei=False):
     m1 = np.asarray([-1, 0, 1, -2, 0, 2, -1, 0, 1]).reshape((3, 3))
     m2 = np.asarray([-2, -1, 0, -1, 0, 1, 0, 1, 2]).reshape((3, 3))
     m3 = np.asarray([-1, -2, -1, 0, 0, 0, 1, 2, 1]).reshape((3, 3))
-    # m4 = np.asarray([0, 1, 2, -1, 0, 1, -2, -1, 0]).reshape((3, 3))
     m4 = np.asarray([0, -1, -2, 1, 0, -1, 2, 1, 0]).reshape((3, 3))
 
     eg1 = np.abs(cv.filter2D(img, -1, m1))
@@ -228,7 +226,7 @@ Based in previous works with Persefone.
 
 def cut_page(img):
     img_copy = img.copy()
-    H, W = img_copy.shape
+    height, width = img_copy.shape
     margin = 5
 
     kernel = np.ones((5, 5), np.uint8)
@@ -241,22 +239,12 @@ def cut_page(img):
     mean_h = np.mean([1.0, mean_hn])
     mean_v = np.mean([1.0, mean_vn])
 
-    # plt.subplot(121)
-    # plt.plot(proy_hn)
-    # plt.hlines(mean_h, 0, W, 'r')
-
-    # plt.subplot(122)
-    # plt.plot(proy_vn)
-    # plt.hlines(mean_v, 0, H, 'r')
-
-    # plt.show()
-
     proy_h = np.where(proy_hn >= mean_h)[0]
     proy_v = np.where(proy_vn >= mean_v)[0]
     margen_1 = 0
-    margen_2 = H
+    margen_2 = height
     margen_3 = 0
-    margen_4 = W
+    margen_4 = width
     margen_1_cnt = 0
     margen_2_cnt = 0
     margen_3_cnt = 0
@@ -267,13 +255,13 @@ def cut_page(img):
         h_2 = proy_h[h + 1]
         hh_1 = proy_h[(len(proy_h) - 1) - h]
         hh_2 = proy_h[(len(proy_h) - 1) - (h + 1)]
-        if h_2 - h_1 > W // 10 and margen_3_cnt == 0:
+        if h_2 - h_1 > width // 10 and margen_3_cnt == 0:
             h_1 = h_1 - margin if h_1 > margin else h_1
-            margen_3 = h_1 if h_1 < W//2 else 0
+            margen_3 = h_1 if h_1 < width//2 else 0
             margen_3_cnt = 1
-        if hh_1 - hh_2 > W // 10 and margen_4_cnt == 0:
-            hh_1 = hh_1 + margin if hh_1 < W - margin else hh_1
-            margen_4 = hh_1 if hh_1 > W // 2 else W
+        if hh_1 - hh_2 > width // 10 and margen_4_cnt == 0:
+            hh_1 = hh_1 + margin if hh_1 < width - margin else hh_1
+            margen_4 = hh_1 if hh_1 > width // 2 else width
             margen_4_cnt = 1
 
     for v in range(len(proy_v) - 1):
@@ -281,57 +269,26 @@ def cut_page(img):
         v_2 = proy_v[v + 1]
         vv_1 = proy_v[(len(proy_v) - 1) - v]
         vv_2 = proy_v[(len(proy_v) - 1) - (v + 1)]
-        if v_2 - v_1 > H // 20 and margen_1_cnt == 0:
+        if v_2 - v_1 > height // 20 and margen_1_cnt == 0:
             v_1 = v_1 - margin if v_1 > margin else v_1
-            margen_1 = v_1 if v_1 < H // 2 else 0
+            margen_1 = v_1 if v_1 < height // 2 else 0
             margen_1_cnt = 1
-        if vv_1 - vv_2 > H // 20 and margen_2_cnt == 0:
-            vv_1 = vv_1 + margin if vv_1 < H - margin else vv_1
-            margen_2 = vv_1 if vv_1 > H // 2 else H
+        if vv_1 - vv_2 > height // 20 and margen_2_cnt == 0:
+            vv_1 = vv_1 + margin if vv_1 < height - margin else vv_1
+            margen_2 = vv_1 if vv_1 > height // 2 else height
             margen_2_cnt = 1
-
-    # horizontal_profile = np.sum(img, axis=1)
-    # vertical_profile = np.sum(img, axis=0)
-    # normalized_vertical = vertical_profile / np.max(vertical_profile)
-    # normalized_horizontal = horizontal_profile / np.max(horizontal_profile)
-    # data_stats = [np.mean(normalized_horizontal), np.std(normalized_horizontal),
-    #              np.mean(normalized_vertical), np.std(normalized_vertical)]
-
-    # limit_vertical = normalized_vertical.shape[0]//8
-    # v_1 = normalized_vertical[:limit_vertical]
-    # v_2 = normalized_vertical[int(-1.5*limit_vertical):]
-    # lv = global_v[0] if data_stats[2] < global_v[0] else data_stats[2]
-    # lh = global_h[0] if data_stats[0] < global_h[0] else data_stats[0]
-
-    # margen_1 = np.where(v_1 >= lv)[0][-1] - 40
-    # margen_2 = np.where(v_2 >= lv)[0][np.where(v_2 >= lv)[0]>100][0] + w - len(v_2) + 40
-
-    # vector_hor = np.where(normalized_horizontal >= lh)[0]
-    # branch = []
-    # for i in range(len(vector_hor) - 1):
-    #    if vector_hor[i + 1] - vector_hor[i] != 1:
-    #        branch.append(vector_hor[i]) if vector_hor[i + 1] < h // 2 else branch.append(vector_hor[i + 1])
-
-    # margen_3 = branch[0] - 40 if branch[0] > 40 else branch[0]
-    # margen_4 = branch[-1] + 40 if branch[-1] + 40 < h else branch[-1]
-
-    # plt.imshow(img, cmap='gray')
-    # plt.vlines(margen_1, 0, H, 'r')
-    # plt.vlines(margen_2, 0, H, 'r')
-    # plt.hlines(margen_3, 0, W, 'r')
-    # plt.hlines(margen_4, 0, W, 'r')
-    # plt.show()
 
     return img[margen_1:margen_2, margen_3:margen_4]
 
 
 """
-Line Obtention using the proyections and the values of it
+Line obtention using the projections and the values of it
 as a distribution to use the mean and the standard deviation.
 """
 
 
 def line_obtention(img):
+
     line_map = np.sum(img, axis=1)
     lines_map = line_map / np.max(line_map)
     lines_mean = np.mean(lines_map)
@@ -378,65 +335,51 @@ def line_obtention(img):
         else:
             whites_in_image.append(white_max)
 
-    # plt.imshow(img, cmap='gray')
-    # for l in lines_in_image:
-    #     plt.hlines(l, 0, 1200, 'r')
-    # for w in whites_in_image:
-    #     plt.hlines(w, 0, 1200, 'b')
-    # plt.show()
-
     return whites_in_image
 
 
 """
 Using the lines found to calculate the angle of the page.
-It's possible to use the bounding box but the method is yet
-not used, still it will theoretically be better.
+For this, the projection of each half is calculated and the
+variation on each side determine the angle.
 """
 
 
 def rotate_image(img):
+
     img_copy = img.copy()
     y, x = np.shape(img_copy)
 
-    # TESTING
     kernel = np.ones((5, 5), np.uint8)
     blur = cv.blur(img_copy, (30, 30), cv.BORDER_DEFAULT)
     blurred = cv.erode(blur, kernel, iterations=3)
-    left = blurred[:,:x // 2]
+
+    left = blurred[:, :x // 2]
     right = blurred[:, x // 2:]
     left_sum = np.sum(left, axis=1)/np.max(np.sum(left, axis=1))
     right_sum = np.sum(right, axis=1) / np.max(np.sum(right, axis=1))
-    # base = np.arange(len(left_sum))
-
-    # fig, (ax1, ax2, ax3) = plt.subplots(ncols=3, sharey=True)
-
-    # ax1.plot(left_sum, base)
-    # ax1.axis('off')
-    # ax2.imshow(blurred, cmap='gray')
-    # ax2.vlines(x // 2, 0, y//3, 'r')
-    # ax2.axis('off')
-    # ax3.plot(-1 * right_sum, base)
-    # ax3.axis('off')
-
-    # fig.show()
 
     blacks_left = np.where(left_sum <= np.mean(left_sum))[0]
-    blacks_right  = np.where(right_sum <= np.mean(right_sum))[0]
+    blacks_right = np.where(right_sum <= np.mean(right_sum))[0]
     bl_lst = [blacks_left[0]]
+    br_lst = [blacks_right[0]]
+    bbbl = []
+    bbbr = []
+    limit = 1000
+
     for bl in range(len(blacks_left) - 1):
         if blacks_left[bl + 1] - blacks_left[bl] != 1:
             bl_lst.append(blacks_left[bl])
             bl_lst.append(blacks_left[bl + 1])
-    br_lst = [blacks_right[0]]
+
     for br in range(len(blacks_right) - 1):
         if blacks_right[br + 1] - blacks_right[br] != 1:
             br_lst.append(blacks_right[br])
             br_lst.append(blacks_right[br + 1])
+
     bl_lst = np.unique(bl_lst)
     br_lst = np.unique(br_lst)
-    bbbl = []
-    bbbr = []
+
     for bl_i in range(len(bl_lst)-1):
         range_bl = left_sum[bl_lst[bl_i]:bl_lst[bl_i+1]]
         local_min_bl = np.min(range_bl)
@@ -447,7 +390,7 @@ def rotate_image(img):
         local_min_br = np.min(range_br)
         if not br_i % 2:
             bbbr.append(br_lst[br_i]+np.where(range_br == local_min_br)[0][0])
-    # CHECK PORTION
+
     if np.abs(bbbr[0]-bbbl[0]) > 50:
         min_left = bbbl[1]
         min_right = bbbr[1]
@@ -460,6 +403,7 @@ def rotate_image(img):
     bbr_lst = np.array(bbbr)-lim
     bbl_limit = np.max(bbl_lst)
     bbr_limit = np.max(bbr_lst)
+
     for l_left in bbl_lst:
         if np.abs(l_left) < np.abs(bbl_limit):
             bbl_limit = l_left
@@ -472,28 +416,27 @@ def rotate_image(img):
 
     bbl = np.array(bbbl[sec_l:sec_l + 5])
     bbr = np.array(bbbr[sec_r:sec_r + 5])
-    limit = 1000
     cat_1 = bbr-bbl
+
     for c_1 in cat_1:
         if np.abs(c_1) < np.abs(limit):
             limit = c_1
+
     y_side = limit
     x_side = x // 2
     angle_test = np.abs(np.arctan2(y_side, x_side))
 
     center = (x // 2, y // 2)
     rot_angle = angle_test * 180/np.pi
+    scale = 0.95
+
     if rot_angle > 3.38:
         rot_angle = 0.0
-    scale = 0.95
 
     neg_image = cv.bitwise_not(img)
     rot_mat = cv.getRotationMatrix2D(center, rot_angle, scale)
     rotated = cv.warpAffine(neg_image, rot_mat, (x, y))
     rotated_image = cv.bitwise_not(rotated)
-
-    # plt.imshow(rotated_image, cmap='gray')
-    # plt.show()
 
     return rotated_image
 
@@ -504,6 +447,7 @@ LINES
 
 
 def line_management(img, lines, path):
+
     lines_copy = lines
     img_copy = img
 
@@ -522,10 +466,11 @@ def line_management(img, lines, path):
     lines_copy = np.array(lines_copy)
     lines_copy = np.reshape(lines_copy, (-1, 2))
     total_lines = np.shape(lines_copy)[0]
-
     cnt_lines = 0
+
     for ll in range(total_lines):
         up, down = lines_copy[ll]
+
         if up == 0:
             down += 20
         elif down == lines_copy[-1][1]:
@@ -543,11 +488,25 @@ def line_management(img, lines, path):
             sauvola(line_section, (int(line_section.shape[0] / 2), int(line_section.shape[0] / 2)), th_ret, 1e-2)
 
         inverted_section = cv.bitwise_not(binary)
-        new_line = line_determination(line = inverted_section,
-                                      limit = [lines_copy[ll][0] - up + 5, lines_copy[ll][1] - up - 5],
-                                      img_line = line_section)
+        new_line = line_determination(line=inverted_section,
+                                      limit=[lines_copy[ll][0] - up + 5, lines_copy[ll][1] - up - 5],
+                                      img_line=line_section)
         cnt_lines += 1
+
         cv.imwrite(path_to_create+'/line_'+str(cnt_lines)+'.tif', new_line)
+
+
+def line_centroids_graph(line_components):
+
+    centroids = line_components[3]
+    cent_x = centroids[:, 0]
+    cent_y = centroids[:, 1]
+    xy = np.vstack([cent_x, cent_y])
+    z = gaussian_kde(xy)(xy)
+    idx = z.argsort()
+    x, y, z = cent_x[idx], cent_y[idx], z[idx]
+
+    return x, y, z
 
 
 def line_determination(line, limit, img_line):
@@ -556,25 +515,19 @@ def line_determination(line, limit, img_line):
     inv_line_copy = np.bitwise_not(line_copy)
     line_components = cv.connectedComponentsWithStats(line_copy)
     props = regionprops(line_components[1])
-    # centroids = line_components[3]
-    # cent_x = centroids[:, 0]
-    # cent_y = centroids[:, 1]
-    # xy = np.vstack([cent_x, cent_y])
-    # z = gaussian_kde(xy)(xy)
-    # idx = z.argsort()
-    # x, y, z = cent_x[idx], cent_y[idx], z[idx]
-    # points = np.transpose(np.vstack([x, y]))
+
     dense_center = np.sum(inv_line_copy[limit[0]:limit[1]], axis=1)
     dense_line = limit[0] + np.where(dense_center == np.min(dense_center))[0][0]
     up_border = dense_line - (limit[1] - limit[0]) / 2
     box_inside = []
 
     for center in range(len(props)):
+
         py, px = props[center].centroid
         bounding = props[center].bbox
         convex_hull = props[center].convex_image
         up_limit = np.max([limit[0], up_border])
-        in_line =  up_limit < py < limit[1]
+        in_line = up_limit < py < limit[1]
 
         if not in_line:
             current_space = line_copy[bounding[0]:bounding[2], bounding[1]:bounding[3]]
@@ -586,7 +539,7 @@ def line_determination(line, limit, img_line):
         else:
             box_inside.append(bounding)
 
-    kernel = np.ones((3,3), 'uint8')
+    kernel = np.ones((3, 3), 'uint8')
     mask = cv.dilate(line_copy, kernel, iterations=1)
     m_x, m_y = np.shape(mask)
     new_line = img_line.copy()
@@ -598,38 +551,4 @@ def line_determination(line, limit, img_line):
             else:
                 new_line[Mx][My] = img_line[Mx][My]
 
-    # fig, (ax1, ax2, ax3, ax4) = plt.subplots(nrows=4, sharex=True)
-    #
-    # ax1.imshow(img_line, cmap='gray')
-    # ax1.set_title('Linea Actual')
-    #
-    # ax2.imshow(inv_line_copy, cmap='gray')
-    # ax2.scatter(x, y, c=z)
-    # ax2.hlines(limit[0], 0, 1200, 'r')
-    # ax2.hlines(limit[1], 0, 1200, 'r')
-    # ax2.set_title('Ubicación de Centroides')
-    #
-    # ax3.imshow(inv_line_copy, cmap='gray')
-    # for point in points:
-    #     in_line = limit[0] < point[1] < limit[1]
-    #     color_dot = 'g' if in_line else 'r'
-    #     if limit[0] - 5 <= point[1] <= limit[0] + 5: color_dot = 'b'
-    #     if limit[1] - 5 <= point[1] <= limit[1] + 5: color_dot = 'b'
-    #     ax3.scatter(point[0], point[1], c=color_dot)
-    # ax3.hlines(limit[0], 0, 1200, 'r')
-    # ax3.hlines(limit[1], 0, 1200, 'r')
-    # ax3.hlines(dense_line, 0, 1200, 'g')
-    # ax3.hlines(up_border, 0, 1200, 'b')
-    # ax3.set_title('Determinación de Centroides en línea')
-    #
-    # ax4.imshow(new_line, cmap='gray')
-    # ax4.set_title('Linea Final')
-    #
-    # ax1.axis('off')
-    # ax2.axis('off')
-    # ax3.axis('off')
-    # ax4.axis('off')
-    # fig.tight_layout()
-    #
-    # fig.show()
     return new_line
